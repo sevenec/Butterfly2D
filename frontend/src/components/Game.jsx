@@ -257,7 +257,7 @@ const Game = () => {
     console.log('🎮 Game loop started successfully!');
   };
 
-  const handleLoadingComplete = () => {
+  const handleLoadingComplete = useCallback(() => {
     console.log('🎮 handleLoadingComplete called');
     try {
       setShowLoadingScreen(false);
@@ -266,9 +266,9 @@ const Game = () => {
     } catch (error) {
       console.error('❌ Error in handleLoadingComplete:', error);
     }
-  };
+  }, []);
 
-  const handleStartGame = () => {
+  const handleStartGame = useCallback(() => {
     console.log('🎮 handleStartGame called');
     
     // Ensure audio starts on user interaction
@@ -290,9 +290,9 @@ const Game = () => {
         startActualGame();
       }, 200);
     }
-  };
+  }, [audioManager]);
 
-  const handleTutorialComplete = () => {
+  const handleTutorialComplete = useCallback(() => {
     localStorage.setItem('butterflyTutorialCompleted', 'true');
     setShowTutorial(false);
     
@@ -301,9 +301,9 @@ const Game = () => {
       setGameState('playing'); // Set game state to playing to trigger initialization
       startActualGame();
     }, 200); // 200ms delay as recommended by troubleshoot agent
-  };
+  }, []);
 
-  const handleTutorialSkip = () => {
+  const handleTutorialSkip = useCallback(() => {
     localStorage.setItem('butterflyTutorialCompleted', 'true');
     setShowTutorial(false);
     
@@ -312,7 +312,7 @@ const Game = () => {
       setGameState('playing'); // Set game state to playing to trigger initialization
       startActualGame();
     }, 200); // 200ms delay as recommended by troubleshoot agent
-  };
+  }, []);
 
   const startActualGame = () => {
     console.log('startActualGame called, gameEngineReady:', gameEngineReady);
