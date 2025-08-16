@@ -59,7 +59,11 @@ const OpeningScreen = ({ onStartGame, onShowTutorial, onOpenFluttererSelector, o
       // Intro music is already playing from app open
       console.log('🎵 START ADVENTURE clicked - intro music already playing');
     }
-    onStartGame();
+    
+    // Add a nice visual feedback before transitioning
+    setTimeout(() => {
+      onStartGame();
+    }, 150); // Small delay for button press animation
   };
 
   const toggleMute = () => {
