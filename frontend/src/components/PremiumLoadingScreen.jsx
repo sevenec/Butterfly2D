@@ -139,11 +139,51 @@ const PremiumLoadingScreen = ({ onLoadingComplete, duration = 3000 }) => {
         </p>
       </div>
 
-      {/* Additional CSS for twinkle animation */}
+      {/* Enhanced CSS for premium animations */}
       <style jsx>{`
         @keyframes twinkle {
           0%, 100% { opacity: 0.3; transform: scale(1); }
           50% { opacity: 1; transform: scale(1.5); }
+        }
+        
+        .premium-loading-overlay {
+          position: fixed;
+          top: 0;
+          left: 0;
+          right: 0;
+          bottom: 0;
+          background: linear-gradient(135deg, #1e1b4b 0%, #581c87 25%, #be185d 50%, #7c2d12 75%, #1e1b4b 100%);
+          display: flex;
+          flex-direction: column;
+          justify-content: center;
+          align-items: center;
+          z-index: 9999;
+          transition: opacity 0.5s ease-out, transform 0.5s ease-out;
+        }
+        
+        .premium-loading-overlay.fade-out {
+          opacity: 0;
+          transform: scale(1.05);
+        }
+        
+        .premium-float {
+          animation: float 3s ease-in-out infinite;
+        }
+        
+        @keyframes float {
+          0%, 100% { transform: translateY(0px); }
+          50% { transform: translateY(-10px); }
+        }
+        
+        .premium-butterfly-wing {
+          animation: flutter 1.5s ease-in-out infinite;
+        }
+        
+        @keyframes flutter {
+          0%, 100% { transform: rotateY(0deg) rotateX(0deg); }
+          25% { transform: rotateY(-15deg) rotateX(5deg); }
+          50% { transform: rotateY(0deg) rotateX(0deg); }
+          75% { transform: rotateY(15deg) rotateX(-5deg); }
         }
       `}</style>
     </div>
