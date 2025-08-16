@@ -1,5 +1,31 @@
 /* PREMIUM APP POLISH - SMOOTH TRANSITIONS & ANIMATIONS */
 
+/* Mobile Performance Optimizations */
+* {
+  -webkit-tap-highlight-color: transparent;
+  -webkit-touch-callout: none;
+  -webkit-user-select: none;
+  user-select: none;
+}
+
+/* Touch feedback for buttons */
+.premium-button:active {
+  transform: translateY(0) scale(0.96);
+  transition: transform 100ms ease-out;
+}
+
+/* Mobile-first responsive design */
+@media (max-width: 768px) {
+  .premium-button:hover {
+    transform: none; /* Disable hover effects on mobile */
+    box-shadow: 0 5px 15px rgba(0,0,0,0.3);
+  }
+  
+  .premium-card:hover {
+    transform: none; /* Disable hover effects on mobile */
+  }
+}
+
 /* Screen Transitions */
 .screen-transition-enter {
   opacity: 0;
