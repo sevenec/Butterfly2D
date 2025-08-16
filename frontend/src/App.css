@@ -23,7 +23,7 @@
   transition: all 300ms cubic-bezier(0.4, 0, 0.2, 1);
 }
 
-/* Premium Button Animations */
+/* Premium Button Animations with Enhanced Hover Effects */
 .premium-button {
   transition: all 300ms cubic-bezier(0.4, 0, 0.2, 1);
   position: relative;
@@ -46,28 +46,28 @@
 }
 
 .premium-button:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 8px 25px rgba(0,0,0,0.3);
+  transform: translateY(-2px) scale(1.02);
+  box-shadow: 0 10px 30px rgba(0,0,0,0.4), 0 0 20px rgba(255,255,255,0.1);
 }
 
 .premium-button:active {
-  transform: translateY(0);
+  transform: translateY(0) scale(0.98);
   transition: transform 150ms;
 }
 
-/* Floating Animations */
+/* Enhanced Floating Animations */
 @keyframes premium-float {
   0%, 100% { transform: translateY(0px) rotate(0deg); }
-  25% { transform: translateY(-8px) rotate(1deg); }
-  50% { transform: translateY(-12px) rotate(0deg); }
-  75% { transform: translateY(-8px) rotate(-1deg); }
+  25% { transform: translateY(-10px) rotate(1deg); }
+  50% { transform: translateY(-15px) rotate(0deg); }
+  75% { transform: translateY(-10px) rotate(-1deg); }
 }
 
 .premium-float {
   animation: premium-float 4s ease-in-out infinite;
 }
 
-/* Pulse Glow Premium */
+/* Enhanced Pulse Glow Premium */
 @keyframes premium-pulse-glow {
   0%, 100% { 
     box-shadow: 0 0 20px rgba(255, 105, 180, 0.4),
@@ -75,9 +75,9 @@
                 0 0 60px rgba(255, 105, 180, 0.1);
   }
   50% { 
-    box-shadow: 0 0 30px rgba(255, 105, 180, 0.6),
-                0 0 60px rgba(255, 105, 180, 0.4),
-                0 0 90px rgba(255, 105, 180, 0.2);
+    box-shadow: 0 0 35px rgba(255, 105, 180, 0.7),
+                0 0 70px rgba(255, 105, 180, 0.5),
+                0 0 105px rgba(255, 105, 180, 0.3);
   }
 }
 
@@ -85,7 +85,17 @@
   animation: premium-pulse-glow 2s ease-in-out infinite;
 }
 
-/* Loading Screen */
+/* Smooth Fade In Animation */
+@keyframes fade-in {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.animate-fade-in {
+  animation: fade-in 0.5s ease-out;
+}
+
+/* Enhanced Loading Screen */
 .premium-loading-overlay {
   position: fixed;
   top: 0;
@@ -98,22 +108,26 @@
   align-items: center;
   justify-content: center;
   z-index: 9999;
-  transition: opacity 500ms ease-out;
+  transition: opacity 500ms ease-out, transform 500ms ease-out;
 }
 
 .premium-loading-overlay.fade-out {
   opacity: 0;
+  transform: scale(1.05);
   pointer-events: none;
 }
 
-/* Butterfly Logo Animation */
+/* Enhanced Butterfly Logo Animation */
 @keyframes butterfly-wings {
-  0%, 100% { transform: scaleX(1) scaleY(1); }
-  50% { transform: scaleX(0.8) scaleY(1.1); }
+  0%, 100% { transform: scaleX(1) scaleY(1) rotateZ(0deg); }
+  25% { transform: scaleX(0.9) scaleY(1.1) rotateZ(2deg); }
+  50% { transform: scaleX(0.8) scaleY(1.2) rotateZ(0deg); }
+  75% { transform: scaleX(0.9) scaleY(1.1) rotateZ(-2deg); }
 }
 
 .premium-butterfly-wing {
-  animation: butterfly-wings 1.5s ease-in-out infinite;
+  animation: butterfly-wings 1.8s ease-in-out infinite;
+  filter: drop-shadow(0 0 10px rgba(255, 105, 180, 0.3));
 }
 
 .premium-butterfly-wing:nth-child(2) {
@@ -128,10 +142,35 @@
   animation-delay: 0.3s;
 }
 
-/* Loading Progress */
+/* Animated Title Glow */
+@keyframes animate-glow {
+  0%, 100% { 
+    filter: drop-shadow(0 0 10px rgba(255, 105, 180, 0.5));
+  }
+  50% { 
+    filter: drop-shadow(0 0 20px rgba(255, 105, 180, 0.8));
+  }
+}
+
+.animate-glow {
+  animation: animate-glow 3s ease-in-out infinite;
+}
+
+/* Premium Card Hover Effects */
+.premium-card {
+  transition: all 300ms cubic-bezier(0.4, 0, 0.2, 1);
+  backdrop-filter: blur(10px);
+}
+
+.premium-card:hover {
+  transform: translateY(-4px) scale(1.02);
+  box-shadow: 0 15px 40px rgba(0,0,0,0.3), 0 0 25px rgba(255,255,255,0.1);
+}
+
+/* Enhanced Loading Progress */
 @keyframes loading-progress {
-  0% { width: 0%; }
-  100% { width: 100%; }
+  0% { width: 0%; transform: scaleX(0); }
+  100% { width: 100%; transform: scaleX(1); }
 }
 
 .premium-loading-bar {
@@ -140,6 +179,7 @@
   background: linear-gradient(90deg, #ff6b9d, #c084fc, #60a5fa, #34d399);
   border-radius: 2px;
   animation: loading-progress 3s ease-out forwards;
+  box-shadow: 0 0 10px rgba(255, 105, 180, 0.5);
 }
 
 /* Achievement Popup */
