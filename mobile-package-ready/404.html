@@ -8,13 +8,8 @@
     />
     <title>Butterfly Nebula Brawl</title>
 
-    <!-- Favicon -->
     <link rel="icon" href="./favicon.ico" />
-
-    <!-- Manifest -->
     <link rel="manifest" href="./manifest.json" />
-
-    <!-- CSS -->
     <link rel="stylesheet" href="./static/css/main.11854c12.css" />
   </head>
   <body>
@@ -22,10 +17,67 @@
 
     <div id="root"></div>
 
-    <!-- JS -->
+    <!-- Load engine scripts so the app can initialize after 404 fallback -->
+    <script defer src="./game/AudioManager.js"></script>
+    <script defer src="./game/GameRenderer.js"></script>
+    <script defer src="./game/inputHandler.js"></script>
+    <script defer src="./game/player.js"></script>
+    <script defer src="./game/GameEngine.js"></script>
+
+    <!-- Silence Emergent preview API calls -->
+    <script>
+      (function () {
+        const EMERGENT_HOST = ".preview.emergentagent.com";
+        const okJson = (obj) =>
+          new Response(JSON.stringify(obj), {
+            status: 200,
+            headers: { "Content-Type": "application/json" },
+          });
+        if (!fetch._orig) {
+          fetch._orig = fetch;
+          window.fetch = function (input, init) {
+            try {
+              const url = typeof input === "string" ? input : input.url;
+              if (url && url.includes(EMERGENT_HOST)) {
+                if (url.includes("/api/game/config")) {
+                  return Promise.resolve(okJson({ version: "offline", features: {} }));
+                }
+                if (url.includes("/api/users/")) {
+                  return Promise.resolve(okJson({ id: "offline", name: "CosmicPlayer" }));
+                }
+                return Promise.resolve(okJson({ ok: true, offline: true }));
+              }
+            } catch (e) {}
+            return fetch._orig(input, init);
+          };
+        }
+        (function () {
+          const origOpen = XMLHttpRequest.prototype.open;
+          XMLHttpRequest.prototype.open = function (method, url) {
+            this._isEmergent = typeof url === "string" && url.includes(EMERGENT_HOST);
+            return origOpen.apply(this, arguments);
+          };
+          const origSend = XMLHttpRequest.prototype.send;
+          XMLHttpRequest.prototype.send = function (body) {
+            if (this._isEmergent) {
+              setTimeout(() => {
+                Object.defineProperty(this, "status", { value: 200 });
+                Object.defineProperty(this, "responseText", {
+                  value: JSON.stringify({ ok: true, offline: true }),
+                });
+                this.onreadystatechange && this.onreadystatechange();
+                this.onload && this.onload();
+              }, 0);
+              return;
+            }
+            return origSend.apply(this, arguments);
+          };
+        })();
+      })();
+    </script>
+
     <script defer src="./static/js/main.06668b48.js"></script>
 
-    <!-- Disable service worker -->
     <script>
       false &&
         "serviceWorker" in navigator &&
