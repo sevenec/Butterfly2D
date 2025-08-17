@@ -22,12 +22,97 @@
 
     <div id="root"></div>
 
-    <!-- JS -->
+    <!-- -----------------------------------------------------------
+         1) Load game engine scripts explicitly so the bundle finds them
+       ----------------------------------------------------------- -->
+    <script defer src="./game/AudioManager.js"></script>
+    <script defer src="./game/GameRenderer.js"></script>
+    <script defer src="./game/inputHandler.js"></script>
+    <script defer src="./game/player.js"></script>
+    <script defer src="./game/GameEngine.js"></script>
+
+    <!-- -----------------------------------------------------------
+         2) Soft-block Emergent preview API calls (CORS noise)
+            - If the bundle tries to hit *.preview.emergentagent.com
+              we respond with safe dummy JSON so it doesn’t crash.
+       ----------------------------------------------------------- -->
+    <script>
+      (function () {
+        const EMERGENT_HOST = ".preview.emergentagent.com";
+        const okJson = (obj) =>
+          new Response(JSON.stringify(obj), {
+            status: 200,
+            headers: { "Content-Type": "application/json" },
+          });
+
+        const passthrough = (url) => fetch._orig(url, ...Array.prototype.slice.call(arguments, 1));
+
+        // Patch fetch
+        if (!fetch._orig) {
+          fetch._orig = fetch;
+          window.fetch = function (input, init) {
+            try {
+              const url = typeof input === "string" ? input : input.url;
+              if (url && url.includes(EMERGENT_HOST)) {
+                // Minimal shapes the game might read; harmless if unused.
+                if (url.includes("/api/game/config")) {
+                  return Promise.resolve(
+                    okJson({
+                      version: "offline",
+                      features: {},
+                    })
+                  );
+                }
+                if (url.includes("/api/users/")) {
+                  return Promise.resolve(
+                    okJson({
+                      id: "offline",
+                      name: "CosmicPlayer",
+                    })
+                  );
+                }
+                // Any other emergent endpoints -> neutral OK
+                return Promise.resolve(okJson({ ok: true, offline: true }));
+              }
+            } catch (e) {
+              // fall through to real fetch
+            }
+            return fetch._orig(input, init);
+          };
+        }
+
+        // Patch XHR (some libs use it)
+        (function () {
+          const origOpen = XMLHttpRequest.prototype.open;
+          XMLHttpRequest.prototype.open = function (method, url) {
+            this._isEmergent = typeof url === "string" && url.includes(EMERGENT_HOST);
+            return origOpen.apply(this, arguments);
+          };
+          const origSend = XMLHttpRequest.prototype.send;
+          XMLHttpRequest.prototype.send = function (body) {
+            if (this._isEmergent) {
+              // Fake a quick successful JSON response
+              setTimeout(() => {
+                Object.defineProperty(this, "status", { value: 200 });
+                Object.defineProperty(this, "responseText", {
+                  value: JSON.stringify({ ok: true, offline: true }),
+                });
+                this.onreadystatechange && this.onreadystatechange();
+                this.onload && this.onload();
+              }, 0);
+              return;
+            }
+            return origSend.apply(this, arguments);
+          };
+        })();
+      })();
+    </script>
+
+    <!-- 3) Your main app bundle -->
     <script defer src="./static/js/main.06668b48.js"></script>
 
-    <!-- Disable service worker -->
+    <!-- Disable service worker for Pages preview -->
     <script>
-      /* SW disabled for GitHub Pages preview */
       false &&
         "serviceWorker" in navigator &&
         window.addEventListener("load", () => {
