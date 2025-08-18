@@ -78,7 +78,7 @@
         }
         function hideOverlay() {
           const el = document.getElementById(OVERLAY_ID);
-          if (el) style.display = "none";
+          if (el) el.style.display = "none";
         }
         function pauseGame() { paused = true; showOverlay(""); }
         function resumeGameWithCountdown() {
