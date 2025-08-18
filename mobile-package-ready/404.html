@@ -2,75 +2,136 @@
 <html lang="en">
   <head>
     <meta charset="utf-8" />
-    <meta
-      name="viewport"
-      content="width=device-width, initial-scale=1, shrink-to-fit=no, viewport-fit=cover"
-    />
+    <meta name="viewport"
+          content="width=device-width, initial-scale=1, shrink-to-fit=no, viewport-fit=cover" />
     <title>Butterfly Nebula Brawl</title>
 
     <link rel="icon" href="./favicon.ico" />
     <link rel="manifest" href="./manifest.json" />
+
     <link rel="stylesheet" href="./static/css/main.11854c12.css" />
+
+    <style>
+      #bnb-pause-overlay {
+        position: fixed; inset: 0;
+        display: none; align-items: center; justify-content: center;
+        background: rgba(0,0,0,0.55);
+        font: 700 48px/1.2 system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial;
+        color: #fff; z-index: 999999;
+        text-align: center;
+      }
+      #bnb-pause-overlay .sub {
+        font-weight: 500; font-size: 18px; opacity: 0.9; margin-top: 10px;
+      }
+    </style>
   </head>
   <body>
     <noscript>You need to enable JavaScript to run this app.</noscript>
-
     <div id="root"></div>
 
-    <!-- Load engine scripts so the app can initialize after 404 fallback -->
+    <!-- Core engine scripts -->
     <script defer src="./game/AudioManager.js"></script>
     <script defer src="./game/GameRenderer.js"></script>
     <script defer src="./game/inputHandler.js"></script>
     <script defer src="./game/player.js"></script>
     <script defer src="./game/GameEngine.js"></script>
 
-    <!-- Silence Emergent preview API calls -->
+    <!-- Default flutterer on first run -->
+    <script>
+      (function () {
+        try {
+          const KEY = "bnb.selectedFlutterer";
+          if (!localStorage.getItem(KEY)) {
+            localStorage.setItem(KEY, JSON.stringify({
+              id: "basic_cosmic_flutter",
+              name: "Basic Cosmic Flutterer",
+              rarity: "common",
+              special: null
+            }));
+          }
+        } catch (e) {}
+      })();
+    </script>
+
+    <!-- Pause/Resume + 3-2-1 -->
+    <script>
+      (function () {
+        const OVERLAY_ID = "bnb-pause-overlay";
+        let paused = false, holdFrames = false, countdownTimer = null;
+
+        const overlay = document.createElement("div");
+        overlay.id = OVERLAY_ID;
+        overlay.innerHTML = '<div><div>PAUSED</div><div class="sub" id="bnb-countdown"></div></div>';
+        document.addEventListener("DOMContentLoaded", () => document.body.appendChild(overlay));
+
+        const _raf = window.requestAnimationFrame.bind(window);
+        window.requestAnimationFrame = (cb) => (paused || holdFrames) ? _raf(() => {}) : _raf(cb);
+
+        function showOverlay(msg){const el=document.getElementById(OVERLAY_ID); if(!el) return;
+          el.style.display="flex"; const cd=document.getElementById("bnb-countdown"); if(cd) cd.textContent=msg||"Press Resume";}
+        function hideOverlay(){const el=document.getElementById(OVERLAY_ID); if(el) el.style.display="none";}
+        function pauseGame(){paused=true; showOverlay("");}
+        function resumeGameWithCountdown(){
+          let n=3; holdFrames=true; paused=false; showOverlay(String(n));
+          clearInterval(countdownTimer);
+          countdownTimer=setInterval(()=>{ n--; if(n<=0){ clearInterval(countdownTimer); holdFrames=false; hideOverlay(); }
+            else { const cd=document.getElementById("bnb-countdown"); if(cd) cd.textContent=String(n); } },1000);
+        }
+
+        document.addEventListener("keydown",(e)=>{
+          if((e.key||"").toLowerCase()==="p"){
+            if(!paused && !holdFrames) pauseGame(); else if(paused) resumeGameWithCountdown();
+          }
+        });
+
+        const attachButtons=()=>{ const btns=Array.from(document.querySelectorAll("button,[role='button']"));
+          const pauseBtn=btns.find(b=>/pause/i.test(b.textContent||"")||/pause/i.test(b.getAttribute("aria-label")||""));
+          const resumeBtn=btns.find(b=>/(resume|play)/i.test(b.textContent||"")||/(resume|play)/i.test(b.getAttribute("aria-label")||""));
+          if(pauseBtn && !pauseBtn._bnbBound){ pauseBtn._bnbBound=true; pauseBtn.addEventListener("click",(e)=>{e.preventDefault(); pauseGame();}); }
+          if(resumeBtn && !resumeBtn._bnbBound){ resumeBtn._bnbBound=true; resumeBtn.addEventListener("click",(e)=>{e.preventDefault(); resumeGameWithCountdown();}); }
+        };
+        const obs=new MutationObserver(attachButtons);
+        document.addEventListener("DOMContentLoaded", attachButtons);
+        obs.observe(document.documentElement,{childList:true,subtree:true});
+
+        window.__BNB_DEBUG__={pauseGame,resumeGameWithCountdown};
+      })();
+    </script>
+
+    <!-- Silenced preview calls (dev/Pages only) -->
     <script>
       (function () {
         const EMERGENT_HOST = ".preview.emergentagent.com";
         const okJson = (obj) =>
-          new Response(JSON.stringify(obj), {
-            status: 200,
-            headers: { "Content-Type": "application/json" },
-          });
+          new Response(JSON.stringify(obj), { status: 200, headers: { "Content-Type": "application/json" } });
+
         if (!fetch._orig) {
           fetch._orig = fetch;
           window.fetch = function (input, init) {
             try {
-              const url = typeof input === "string" ? input : input.url;
+              const url = typeof input === "string" ? input : input && input.url;
               if (url && url.includes(EMERGENT_HOST)) {
-                if (url.includes("/api/game/config")) {
-                  return Promise.resolve(okJson({ version: "offline", features: {} }));
-                }
-                if (url.includes("/api/users/")) {
-                  return Promise.resolve(okJson({ id: "offline", name: "CosmicPlayer" }));
-                }
+                if (url.includes("/api/game/config")) return Promise.resolve(okJson({ version: "offline", features: {} }));
+                if (url.includes("/api/users/")) return Promise.resolve(okJson({ id: "offline", name: "CosmicPlayer" }));
                 return Promise.resolve(okJson({ ok: true, offline: true }));
               }
             } catch (e) {}
             return fetch._orig(input, init);
           };
         }
-        (function () {
-          const origOpen = XMLHttpRequest.prototype.open;
-          XMLHttpRequest.prototype.open = function (method, url) {
-            this._isEmergent = typeof url === "string" && url.includes(EMERGENT_HOST);
-            return origOpen.apply(this, arguments);
-          };
-          const origSend = XMLHttpRequest.prototype.send;
-          XMLHttpRequest.prototype.send = function (body) {
-            if (this._isEmergent) {
-              setTimeout(() => {
-                Object.defineProperty(this, "status", { value: 200 });
-                Object.defineProperty(this, "responseText", {
-                  value: JSON.stringify({ ok: true, offline: true }),
-                });
-                this.onreadystatechange && this.onreadystatechange();
-                this.onload && this.onload();
-              }, 0);
+        (function(){
+          const origOpen=XMLHttpRequest.prototype.open;
+          XMLHttpRequest.prototype.open=function(method,url){ this._isEmergent=typeof url==="string"&&url.includes(EMERGENT_HOST);
+            return origOpen.apply(this,arguments); };
+          const origSend=XMLHttpRequest.prototype.send;
+          XMLHttpRequest.prototype.send=function(body){
+            if(this._isEmergent){
+              setTimeout(()=>{ Object.defineProperty(this,"status",{value:200});
+                Object.defineProperty(this,"responseText",{value:JSON.stringify({ok:true,offline:true})});
+                this.onreadystatechange&&this.onreadystatechange(); this.onload&&this.onload(); },0);
               return;
             }
-            return origSend.apply(this, arguments);
+            return origSend.apply(this,arguments);
           };
         })();
       })();
@@ -79,11 +140,9 @@
     <script defer src="./static/js/main.06668b48.js"></script>
 
     <script>
-      false &&
-        "serviceWorker" in navigator &&
-        window.addEventListener("load", () => {
-          navigator.serviceWorker.register("./sw.js", { scope: "./" });
-        });
+      false && "serviceWorker" in navigator && window.addEventListener("load", () => {
+        navigator.serviceWorker.register("./sw.js", { scope: "./" });
+      });
     </script>
   </body>
 </html>
