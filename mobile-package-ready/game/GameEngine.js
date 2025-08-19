@@ -1,3 +1,24 @@
+// --- BNB NULL-SAFETY HELPERS (do not remove) ---
+function bnbNormalizePlayer(obj) {
+  const p = obj && typeof obj === 'object' ? obj : {};
+  if (!p.flutterer || typeof p.flutterer !== 'object') p.flutterer = {};
+  if (p.special === undefined) p.special = null;
+  if (p.flutterer.special === undefined) p.flutterer.special = null;
+  return p;
+}
+function bnbResolvePlayer(ctx) {
+  let p = null;
+  if (ctx && typeof ctx === 'object') {
+    if (ctx.player) p = ctx.player;
+    else if (ctx.state && ctx.state.player) p = ctx.state.player;
+    else if (ctx.state && typeof ctx.state === 'object' && (ctx.state.flutterer || ctx.state.special !== undefined)) {
+      p = ctx.state;
+    }
+  }
+  return bnbNormalizePlayer(p);
+}
+// ------------------------------------------------
+
 window.GameEngine = class GameEngine {
   constructor(canvas, ctx) {
     this.canvas = canvas;
@@ -371,7 +392,7 @@ window.GameEngine = class GameEngine {
           // Create butterfly trail effect
           this.particleSystem.createButterflyTrail(
             this.player.x, this.player.y, 
-            this.selectedFlutterer.colors.wing1
+            (this.selectedFlutterer && this.selectedFlutterer.colors && this.selectedFlutterer.colors.wing1) || '#ff69b4'
           );
         }
       }
@@ -433,7 +454,7 @@ window.GameEngine = class GameEngine {
           // Create butterfly trail effect
           this.particleSystem.createButterflyTrail(
             this.player.x, this.player.y, 
-            this.selectedFlutterer.colors.wing1
+            (this.selectedFlutterer && this.selectedFlutterer.colors && this.selectedFlutterer.colors.wing1) || '#ff69b4'
           );
         }
       }
@@ -756,6 +777,16 @@ window.GameEngine = class GameEngine {
         this.optimizeForLowPerformance();
       }
     }
+
+    // --- BNB: normalize runtime state safely each tick ---
+    this.player = bnbResolvePlayer(this);
+    if (!this.selectedFlutterer || typeof this.selectedFlutterer !== 'object') {
+      this.selectedFlutterer = {
+        skills: { speed: 1.0, health: 100, special: null },
+        colors: { wing1: '#ff69b4' }
+      };
+    }
+    // -----------------------------------------------------
     
     if (this.gameState === 'bossIntro') {
       this.bossIntroTimer -= deltaTime;
@@ -1236,7 +1267,7 @@ window.GameEngine = class GameEngine {
       const projectile = this.projectiles[pIndex];
       if (projectile.type !== 'player') continue;
       
-      for (let oIndex = this.obstacles.length - 1; oIndex >= 0; oIndex--) {
+      for (let oIndex = this.obstacles.length - 1; oIndex--) {
         const obstacle = this.obstacles[oIndex];
         if (this.isColliding(projectile, obstacle)) {
           this.createExplosion(obstacle.x, obstacle.y);
@@ -1629,9 +1660,19 @@ window.GameEngine = class GameEngine {
   }
   
   updateFluttererSpecials(deltaTime) {
-    if (!this.selectedFlutterer || !this.player) return;
-    
-    const special = this.selectedFlutterer.skills.special;
+    // --- BNB: normalize & guard ---
+    this.player = bnbResolvePlayer(this);
+    const f = (this.selectedFlutterer && typeof this.selectedFlutterer === 'object')
+      ? this.selectedFlutterer
+      : (this.player.flutterer || {});
+    const skills = (f && typeof f === 'object' && f.skills) ? f.skills : {};
+    const special = (skills.special !== undefined && skills.special !== null)
+      ? skills.special
+      : ((f.special !== undefined && f.special !== null)
+          ? f.special
+          : (this.player.flutterer ? this.player.flutterer.special : (this.player.special ?? null)));
+    if (!special) return;
+    // --------------------------------
     
     // Update special ability cooldowns
     if (this.player.specialCooldown > 0) {
