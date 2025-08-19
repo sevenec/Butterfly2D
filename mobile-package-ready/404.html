@@ -28,7 +28,7 @@
     <noscript>You need to enable JavaScript to run this app.</noscript>
     <div id="root"></div>
 
-    <!-- Engine scripts -->
+    <!-- Core engine scripts (must load before main bundle) -->
     <script defer src="./game/AudioManager.js"></script>
     <script defer src="./game/GameRenderer.js"></script>
     <script defer src="./game/inputHandler.js"></script>
@@ -39,32 +39,181 @@
     <script>
       (function () {
         try {
-          const DEFAULT_FLUTTERER = { id:"basic_cosmic_flutter", name:"Basic Cosmic Flutterer", rarity:"common", stats:{speed:1,health:1}, special:null };
-          const DEFAULT_PLAYER = { name:"Player", coins:0, bestScore:0, special:null, flutterer:DEFAULT_FLUTTERER };
-          const ensure = (k,v)=>{ if(!localStorage.getItem(k)) localStorage.setItem(k,JSON.stringify(v)); };
-          ensure("bnb.selectedFlutterer",DEFAULT_FLUTTERER);
-          ensure("selectedFlutterer",DEFAULT_FLUTTERER);
-          ensure("bnb.player",DEFAULT_PLAYER);
-          ensure("player",DEFAULT_PLAYER);
-          ensure("bnb.profile",DEFAULT_PLAYER);
-          ensure("profile",DEFAULT_PLAYER);
-        } catch(e){}
+          const DEFAULT_FLUTTERER = {
+            id: "basic_cosmic_flutter",
+            name: "Basic Cosmic Flutterer",
+            rarity: "common",
+            stats: { speed: 1, health: 1 },
+            special: null
+          };
+          const DEFAULT_PLAYER = {
+            name: "Player",
+            coins: 0,
+            bestScore: 0,
+            special: null,
+            flutterer: DEFAULT_FLUTTERER
+          };
+          const ensure = (k, v) => { if (!localStorage.getItem(k)) localStorage.setItem(k, JSON.stringify(v)); };
+          ensure("bnb.selectedFlutterer", DEFAULT_FLUTTERER);
+          ensure("selectedFlutterer", DEFAULT_FLUTTERER);
+          ensure("bnb.player", DEFAULT_PLAYER);
+          ensure("player", DEFAULT_PLAYER);
+          ensure("bnb.profile", DEFAULT_PLAYER);
+          ensure("profile", DEFAULT_PLAYER);
+        } catch (e) {}
       })();
     </script>
 
-    <!-- Pause/Resume overlay -->
-    <script>/* identical pause code as index.html */</script>
+    <!-- Pause/Resume with 3-2-1 countdown -->
+    <script>
+      (function () {
+        const OVERLAY_ID = "bnb-pause-overlay";
+        let paused = false, holdFrames = false, countdownTimer = null;
 
-    <!-- Safety shim -->
-    <script>/* identical safety shim as index.html */</script>
+        const overlay = document.createElement("div");
+        overlay.id = OVERLAY_ID;
+        overlay.innerHTML = '<div><div>PAUSED</div><div class="sub" id="bnb-countdown"></div></div>';
+        document.addEventListener("DOMContentLoaded", () => document.body.appendChild(overlay));
 
-    <!-- Silenced preview calls -->
-    <script>/* identical stub silencer as index.html */</script>
+        const _raf = window.requestAnimationFrame.bind(window);
+        window.requestAnimationFrame = (cb) => (paused || holdFrames) ? _raf(() => {}) : _raf(cb);
 
-    <!-- Main bundle -->
+        function showOverlay(msg){const el=document.getElementById(OVERLAY_ID); if(!el) return;
+          el.style.display="flex"; const cd=document.getElementById("bnb-countdown"); if(cd) cd.textContent=msg||"Press Resume";}
+        function hideOverlay(){const el=document.getElementById(OVERLAY_ID); if(el) el.style.display="none";}
+        function pauseGame(){paused=true; showOverlay("");}
+        function resumeGameWithCountdown(){
+          let n=3; holdFrames=true; paused=false; showOverlay(String(n));
+          clearInterval(countdownTimer);
+          countdownTimer=setInterval(()=>{ n--; if(n<=0){ clearInterval(countdownTimer); holdFrames=false; hideOverlay(); }
+            else { const cd=document.getElementById("bnb-countdown"); if(cd) cd.textContent=String(n); } },1000);
+        }
+
+        document.addEventListener("keydown",(e)=>{
+          if((e.key||"").toLowerCase()==="p"){
+            if(!paused && !holdFrames) pauseGame(); else if(paused) resumeGameWithCountdown();
+          }
+        });
+
+        const attachButtons=()=>{ const btns=Array.from(document.querySelectorAll("button,[role='button']"));
+          const pauseBtn=btns.find(b=>/pause/i.test(b.textContent||"")||/pause/i.test(b.getAttribute("aria-label")||""));
+          const resumeBtn=btns.find(b=>/(resume|play)/i.test(b.textContent||"")||/(resume|play)/i.test(b.getAttribute("aria-label")||""));
+          if(pauseBtn && !pauseBtn._bnbBound){ pauseBtn._bnbBound=true; pauseBtn.addEventListener("click",(e)=>{e.preventDefault(); pauseGame();}); }
+          if(resumeBtn && !resumeBtn._bnbBound){ resumeBtn._bnbBound=true; resumeBtn.addEventListener("click",(e)=>{e.preventDefault(); resumeGameWithCountdown();}); }
+        };
+        const obs=new MutationObserver(attachButtons);
+        document.addEventListener("DOMContentLoaded", attachButtons);
+        obs.observe(document.documentElement,{childList:true,subtree:true});
+
+        window.__BNB_DEBUG__={pauseGame,resumeGameWithCountdown};
+      })();
+    </script>
+
+    <!-- HARD PATCH: guard GameEngine against missing player/flutterer/special -->
+    <script>
+      (function () {
+        const SAFE_FLUTTERER = { id:"basic_cosmic_flutter", name:"Basic Cosmic Flutterer", rarity:"common",
+          stats:{ speed:1, health:1 }, special: null };
+        const SAFE_PLAYER = { name:"Player", coins:0, bestScore:0, special:null, flutterer: SAFE_FLUTTERER };
+
+        function ensureCtx(ctx){
+          if (!ctx.player) ctx.player = {};
+          if (ctx.player.special === undefined) ctx.player.special = null;
+          if (!ctx.player.flutterer) ctx.player.flutterer = {};
+          if (ctx.player.flutterer.special === undefined) ctx.player.flutterer.special = null;
+          if (!ctx.selectedFlutterer) ctx.selectedFlutterer = ctx.player.flutterer;
+        }
+
+        function patch(){
+          try {
+            if (!window.GameEngine || !window.GameEngine.prototype) return;
+
+            if (!window.GameEngine.prototype.__bnbWrappedUpdate && window.GameEngine.prototype.update) {
+              const _update = window.GameEngine.prototype.update;
+              window.GameEngine.prototype.update = function () {
+                try { ensureCtx(this); } catch(e){}
+                return _update.apply(this, arguments);
+              };
+              window.GameEngine.prototype.__bnbWrappedUpdate = true;
+            }
+
+            if (window.GameEngine.prototype.updateFluttererSpecials && !window.GameEngine.prototype.__bnbPatchedSpecials) {
+              const orig = window.GameEngine.prototype.updateFluttererSpecials;
+              window.GameEngine.prototype.updateFluttererSpecials = function () {
+                try { ensureCtx(this); } catch(e){}
+                try { return orig.apply(this, arguments); }
+                catch (e) { return; }
+              };
+              window.GameEngine.prototype.__bnbPatchedSpecials = true;
+            }
+
+            const altNames = ["updatePlayerSpecials", "applyFluttererSpecials", "tickSpecials"];
+            for (const name of altNames) {
+              if (window.GameEngine.prototype[name] && !window.GameEngine.prototype["__bnb_"+name]) {
+                const o = window.GameEngine.prototype[name];
+                window.GameEngine.prototype[name] = function () {
+                  try { ensureCtx(this); } catch(e){}
+                  try { return o.apply(this, arguments); } catch (e) { return; }
+                };
+                window.GameEngine.prototype["__bnb_"+name] = true;
+              }
+            }
+
+            clearInterval(timer);
+          } catch(e){}
+        }
+
+        const timer = setInterval(patch, 50);
+        document.addEventListener("DOMContentLoaded", patch);
+      })();
+    </script>
+
+    <!-- Silenced preview calls (dev/Pages only) -->
+    <script>
+      (function () {
+        const EMERGENT_HOST = ".preview.emergentagent.com";
+        const okJson = (obj) =>
+          new Response(JSON.stringify(obj), { status: 200, headers: { "Content-Type": "application/json" } });
+        if (!fetch._orig) {
+          fetch._orig = fetch;
+          window.fetch = function (input, init) {
+            try {
+              const url = typeof input === "string" ? input : input && input.url;
+              if (url && url.includes(EMERGENT_HOST)) {
+                if (url.includes("/api/game/config")) return Promise.resolve(okJson({ version: "offline", features: {} }));
+                if (url.includes("/api/users/")) return Promise.resolve(okJson({ id: "offline", name: "CosmicPlayer" }));
+                return Promise.resolve(okJson({ ok: true, offline: true }));
+              }
+            } catch (e) {}
+            return fetch._orig(input, init);
+          };
+        }
+        (function(){
+          const origOpen=XMLHttpRequest.prototype.open;
+          XMLHttpRequest.prototype.open=function(method,url){ this._isEmergent=typeof url==="string"&&url.includes(EMERGENT_HOST);
+            return origOpen.apply(this,arguments); };
+          const origSend=XMLHttpRequest.prototype.send;
+          XMLHttpRequest.prototype.send=function(body){
+            if(this._isEmergent){
+              setTimeout(()=>{ Object.defineProperty(this,"status",{value:200});
+                Object.defineProperty(this,"responseText",{value:JSON.stringify({ok:true,offline:true})});
+                this.onreadystatechange&&this.onreadystatechange(); this.onload&&this.onload(); },0);
+              return;
+            }
+            return origSend.apply(this,arguments);
+          };
+        })();
+      })();
+    </script>
+
+    <!-- Main bundle: exact hashed filename from /static/js/ -->
     <script defer src="./static/js/main.06668b48.js"></script>
 
-    <!-- SW disabled -->
-    <script> false && "serviceWorker" in navigator && window.addEventListener("load",()=>{navigator.serviceWorker.register("./sw.js",{scope:"./"});}); </script>
+    <!-- Disable service worker on Pages -->
+    <script>
+      false && "serviceWorker" in navigator && window.addEventListener("load", () => {
+        navigator.serviceWorker.register("./sw.js", { scope: "./" });
+      });
+    </script>
   </body>
 </html>
