@@ -8,11 +8,8 @@
 
     <link rel="icon" href="./favicon.ico" />
     <link rel="manifest" href="./manifest.json" />
-
-    <!-- CSS: exact hashed filename from /static/css/ -->
     <link rel="stylesheet" href="./static/css/main.11854c12.css" />
 
-    <!-- Pause overlay style -->
     <style>
       #bnb-pause-overlay {
         position: fixed; inset: 0;
@@ -31,14 +28,14 @@
     <noscript>You need to enable JavaScript to run this app.</noscript>
     <div id="root"></div>
 
-    <!-- Explicit engine scripts (must load before main bundle) -->
+    <!-- Explicit engine scripts -->
     <script defer src="./game/AudioManager.js"></script>
     <script defer src="./game/GameRenderer.js"></script>
     <script defer src="./game/inputHandler.js"></script>
     <script defer src="./game/player.js"></script>
     <script defer src="./game/GameEngine.js"></script>
 
-    <!-- Strong default seed to avoid undefined (player/selectedFlutterer/special) -->
+    <!-- Strong auto-select + player defaults -->
     <script>
       (function () {
         try {
@@ -49,7 +46,6 @@
             stats: { speed: 1, health: 1 },
             special: null
           };
-
           const DEFAULT_PLAYER = {
             name: "Player",
             coins: 0,
@@ -57,10 +53,7 @@
             special: null,
             flutterer: DEFAULT_FLUTTERER
           };
-
           const ensure = (k, v) => { if (!localStorage.getItem(k)) localStorage.setItem(k, JSON.stringify(v)); };
-
-          // Seed multiple likely keys the game may read
           ensure("bnb.selectedFlutterer", DEFAULT_FLUTTERER);
           ensure("selectedFlutterer", DEFAULT_FLUTTERER);
           ensure("bnb.player", DEFAULT_PLAYER);
@@ -71,125 +64,102 @@
       })();
     </script>
 
-    <!-- Pause/Resume with 3-2-1 countdown; binds to UI buttons if present; hotkey 'P' (desktop) -->
+    <!-- Pause/Resume with 3-2-1 countdown -->
     <script>
       (function () {
         const OVERLAY_ID = "bnb-pause-overlay";
         let paused = false, holdFrames = false, countdownTimer = null;
-
         const overlay = document.createElement("div");
         overlay.id = OVERLAY_ID;
         overlay.innerHTML = '<div><div>PAUSED</div><div class="sub" id="bnb-countdown"></div></div>';
         document.addEventListener("DOMContentLoaded", () => document.body.appendChild(overlay));
-
         const _raf = window.requestAnimationFrame.bind(window);
         window.requestAnimationFrame = (cb) => (paused || holdFrames) ? _raf(() => {}) : _raf(cb);
-
-        function showOverlay(msg) {
-          const el = document.getElementById(OVERLAY_ID);
-          if (!el) return;
-          el.style.display = "flex";
-          const cd = document.getElementById("bnb-countdown");
-          if (cd) cd.textContent = msg || "Press Resume";
-        }
-        function hideOverlay() {
-          const el = document.getElementById(OVERLAY_ID);
-          if (el) el.style.display = "none";
-        }
-        function pauseGame() { paused = true; showOverlay(""); }
-        function resumeGameWithCountdown() {
-          let n = 3;
-          holdFrames = true; paused = false; showOverlay(String(n));
+        function showOverlay(msg){const el=document.getElementById(OVERLAY_ID); if(!el) return;
+          el.style.display="flex"; const cd=document.getElementById("bnb-countdown"); if(cd) cd.textContent=msg||"Press Resume";}
+        function hideOverlay(){const el=document.getElementById(OVERLAY_ID); if(el) el.style.display="none";}
+        function pauseGame(){paused=true; showOverlay("");}
+        function resumeGameWithCountdown(){
+          let n=3; holdFrames=true; paused=false; showOverlay(String(n));
           clearInterval(countdownTimer);
-          countdownTimer = setInterval(() => {
-            n--;
-            if (n <= 0) {
-              clearInterval(countdownTimer);
-              holdFrames = false;
-              hideOverlay();
-            } else {
-              const cd = document.getElementById("bnb-countdown");
-              if (cd) cd.textContent = String(n);
-            }
-          }, 1000);
+          countdownTimer=setInterval(()=>{ n--; if(n<=0){ clearInterval(countdownTimer); holdFrames=false; hideOverlay(); }
+            else { const cd=document.getElementById("bnb-countdown"); if(cd) cd.textContent=String(n); } },1000);
         }
-
-        document.addEventListener("keydown", (e) => {
-          if ((e.key || "").toLowerCase() === "p") {
-            if (!paused && !holdFrames) pauseGame();
-            else if (paused) resumeGameWithCountdown();
+        document.addEventListener("keydown",(e)=>{
+          if((e.key||"").toLowerCase()==="p"){
+            if(!paused && !holdFrames) pauseGame(); else if(paused) resumeGameWithCountdown();
           }
         });
-
-        const attachButtons = () => {
-          const buttons = Array.from(document.querySelectorAll("button, [role='button']"));
-          const pauseBtn = buttons.find(b => /pause/i.test(b.textContent || "")
-                                  || /pause/i.test(b.getAttribute("aria-label") || ""));
-          const resumeBtn = buttons.find(b => /(resume|play)/i.test(b.textContent || "")
-                                  || /(resume|play)/i.test(b.getAttribute("aria-label") || ""));
-          if (pauseBtn && !pauseBtn._bnbBound) {
-            pauseBtn._bnbBound = true; pauseBtn.addEventListener("click", (e) => { e.preventDefault(); pauseGame(); });
-          }
-          if (resumeBtn && !resumeBtn._bnbBound) {
-            resumeBtn._bnbBound = true; resumeBtn.addEventListener("click", (e) => { e.preventDefault(); resumeGameWithCountdown(); });
-          }
+        const attachButtons=()=>{ const btns=Array.from(document.querySelectorAll("button,[role='button']"));
+          const pauseBtn=btns.find(b=>/pause/i.test(b.textContent||"")||/pause/i.test(b.getAttribute("aria-label")||""));
+          const resumeBtn=btns.find(b=>/(resume|play)/i.test(b.textContent||"")||/(resume|play)/i.test(b.getAttribute("aria-label")||""));
+          if(pauseBtn && !pauseBtn._bnbBound){ pauseBtn._bnbBound=true; pauseBtn.addEventListener("click",(e)=>{e.preventDefault(); pauseGame();}); }
+          if(resumeBtn && !resumeBtn._bnbBound){ resumeBtn._bnbBound=true; resumeBtn.addEventListener("click",(e)=>{e.preventDefault(); resumeGameWithCountdown();}); }
         };
-        const obs = new MutationObserver(attachButtons);
+        const obs=new MutationObserver(attachButtons);
         document.addEventListener("DOMContentLoaded", attachButtons);
-        obs.observe(document.documentElement, { childList: true, subtree: true });
-
-        window.__BNB_DEBUG__ = { pauseGame, resumeGameWithCountdown };
+        obs.observe(document.documentElement,{childList:true,subtree:true});
+        window.__BNB_DEBUG__={pauseGame,resumeGameWithCountdown};
       })();
     </script>
 
-    <!-- Silenced preview calls (keep for dev/Pages; guard/remove for release) -->
+    <!-- Safety shim for runtime player/flutterer -->
+    <script>
+      (function () {
+        function ensurePlayerDefaults(ctx) {
+          try {
+            if (!ctx.player) ctx.player = {};
+            if (ctx.player.special === undefined) ctx.player.special = null;
+            if (!ctx.player.flutterer) ctx.player.flutterer = {};
+            if (ctx.player.flutterer.special === undefined) ctx.player.flutterer.special = null;
+          } catch (e) {}
+        }
+        function patchWhenReady() {
+          try {
+            if (window.GameEngine && window.GameEngine.prototype && window.GameEngine.prototype.updateFluttererSpecials) {
+              const orig = window.GameEngine.prototype.updateFluttererSpecials;
+              window.GameEngine.prototype.updateFluttererSpecials = function () {
+                ensurePlayerDefaults(this);
+                return orig.apply(this, arguments);
+              };
+              if (window.GameEngine.prototype.update) {
+                const _u = window.GameEngine.prototype.update;
+                window.GameEngine.prototype.update = function () {
+                  ensurePlayerDefaults(this);
+                  return _u.apply(this, arguments);
+                };
+              }
+              clearInterval(__bnbPatchTimer);
+            }
+          } catch (e) {}
+        }
+        var __bnbPatchTimer = setInterval(patchWhenReady, 50);
+        document.addEventListener('DOMContentLoaded', patchWhenReady);
+      })();
+    </script>
+
+    <!-- Silenced preview calls -->
     <script>
       (function () {
         const EMERGENT_HOST = ".preview.emergentagent.com";
-        const okJson = (obj) =>
-          new Response(JSON.stringify(obj), { status: 200, headers: { "Content-Type": "application/json" } });
-
+        const okJson = (obj) => new Response(JSON.stringify(obj), { status: 200, headers: { "Content-Type": "application/json" } });
         if (!fetch._orig) {
           fetch._orig = fetch;
           window.fetch = function (input, init) {
             try {
               const url = typeof input === "string" ? input : input && input.url;
-              if (url && url.includes(EMERGENT_HOST)) {
-                if (url.includes("/api/game/config")) return Promise.resolve(okJson({ version: "offline", features: {} }));
-                if (url.includes("/api/users/")) return Promise.resolve(okJson({ id: "offline", name: "CosmicPlayer" }));
-                return Promise.resolve(okJson({ ok: true, offline: true }));
-              }
+              if (url && url.includes(EMERGENT_HOST)) return Promise.resolve(okJson({ offline: true }));
             } catch (e) {}
             return fetch._orig(input, init);
           };
         }
-        (function () {
-          const origOpen = XMLHttpRequest.prototype.open;
-          XMLHttpRequest.prototype.open = function (method, url) {
-            this._isEmergent = typeof url === "string" && url.includes(EMERGENT_HOST);
-            return origOpen.apply(this, arguments);
-          };
-          const origSend = XMLHttpRequest.prototype.send;
-          XMLHttpRequest.prototype.send = function (body) {
-            if (this._isEmergent) {
-              setTimeout(() => {
-                Object.defineProperty(this, "status", { value: 200 });
-                Object.defineProperty(this, "responseText", { value: JSON.stringify({ ok: true, offline: true }) });
-                this.onreadystatechange && this.onreadystatechange();
-                this.onload && this.onload();
-              }, 0);
-              return;
-            }
-            return origSend.apply(this, arguments);
-          };
-        })();
       })();
     </script>
 
-    <!-- Main bundle: exact hashed filename from /static/js/ -->
+    <!-- Main bundle -->
     <script defer src="./static/js/main.06668b48.js"></script>
 
-    <!-- Disable service worker on Pages -->
+    <!-- Service worker disabled -->
     <script>
       false && "serviceWorker" in navigator && window.addEventListener("load", () => {
         navigator.serviceWorker.register("./sw.js", { scope: "./" });
