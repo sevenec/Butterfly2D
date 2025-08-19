@@ -83,4 +83,117 @@
         document.addEventListener("DOMContentLoaded", () => document.body.appendChild(overlay));
 
         const _raf = window.requestAnimationFrame.bind(window);
-        window.req
+        window.requestAnimationFrame = (cb) => (paused || holdFrames) ? _raf(() => {}) : _raf(cb);
+
+        function showOverlay(msg) {
+          const el = document.getElementById(OVERLAY_ID);
+          if (!el) return;
+          el.style.display = "flex";
+          const cd = document.getElementById("bnb-countdown");
+          if (cd) cd.textContent = msg || "Press Resume";
+        }
+        function hideOverlay() {
+          const el = document.getElementById(OVERLAY_ID);
+          if (el) el.style.display = "none";
+        }
+        function pauseGame() { paused = true; showOverlay(""); }
+        function resumeGameWithCountdown() {
+          let n = 3;
+          holdFrames = true; paused = false; showOverlay(String(n));
+          clearInterval(countdownTimer);
+          countdownTimer = setInterval(() => {
+            n--;
+            if (n <= 0) {
+              clearInterval(countdownTimer);
+              holdFrames = false;
+              hideOverlay();
+            } else {
+              const cd = document.getElementById("bnb-countdown");
+              if (cd) cd.textContent = String(n);
+            }
+          }, 1000);
+        }
+
+        document.addEventListener("keydown", (e) => {
+          if ((e.key || "").toLowerCase() === "p") {
+            if (!paused && !holdFrames) pauseGame();
+            else if (paused) resumeGameWithCountdown();
+          }
+        });
+
+        const attachButtons = () => {
+          const buttons = Array.from(document.querySelectorAll("button, [role='button']"));
+          const pauseBtn = buttons.find(b => /pause/i.test(b.textContent || "")
+                                  || /pause/i.test(b.getAttribute("aria-label") || ""));
+          const resumeBtn = buttons.find(b => /(resume|play)/i.test(b.textContent || "")
+                                  || /(resume|play)/i.test(b.getAttribute("aria-label") || ""));
+          if (pauseBtn && !pauseBtn._bnbBound) {
+            pauseBtn._bnbBound = true; pauseBtn.addEventListener("click", (e) => { e.preventDefault(); pauseGame(); });
+          }
+          if (resumeBtn && !resumeBtn._bnbBound) {
+            resumeBtn._bnbBound = true; resumeBtn.addEventListener("click", (e) => { e.preventDefault(); resumeGameWithCountdown(); });
+          }
+        };
+        const obs = new MutationObserver(attachButtons);
+        document.addEventListener("DOMContentLoaded", attachButtons);
+        obs.observe(document.documentElement, { childList: true, subtree: true });
+
+        window.__BNB_DEBUG__ = { pauseGame, resumeGameWithCountdown };
+      })();
+    </script>
+
+    <!-- Silenced preview calls (keep for dev/Pages; guard/remove for release) -->
+    <script>
+      (function () {
+        const EMERGENT_HOST = ".preview.emergentagent.com";
+        const okJson = (obj) =>
+          new Response(JSON.stringify(obj), { status: 200, headers: { "Content-Type": "application/json" } });
+
+        if (!fetch._orig) {
+          fetch._orig = fetch;
+          window.fetch = function (input, init) {
+            try {
+              const url = typeof input === "string" ? input : input && input.url;
+              if (url && url.includes(EMERGENT_HOST)) {
+                if (url.includes("/api/game/config")) return Promise.resolve(okJson({ version: "offline", features: {} }));
+                if (url.includes("/api/users/")) return Promise.resolve(okJson({ id: "offline", name: "CosmicPlayer" }));
+                return Promise.resolve(okJson({ ok: true, offline: true }));
+              }
+            } catch (e) {}
+            return fetch._orig(input, init);
+          };
+        }
+        (function () {
+          const origOpen = XMLHttpRequest.prototype.open;
+          XMLHttpRequest.prototype.open = function (method, url) {
+            this._isEmergent = typeof url === "string" && url.includes(EMERGENT_HOST);
+            return origOpen.apply(this, arguments);
+          };
+          const origSend = XMLHttpRequest.prototype.send;
+          XMLHttpRequest.prototype.send = function (body) {
+            if (this._isEmergent) {
+              setTimeout(() => {
+                Object.defineProperty(this, "status", { value: 200 });
+                Object.defineProperty(this, "responseText", { value: JSON.stringify({ ok: true, offline: true }) });
+                this.onreadystatechange && this.onreadystatechange();
+                this.onload && this.onload();
+              }, 0);
+              return;
+            }
+            return origSend.apply(this, arguments);
+          };
+        })();
+      })();
+    </script>
+
+    <!-- Main bundle: exact hashed filename from /static/js/ -->
+    <script defer src="./static/js/main.06668b48.js"></script>
+
+    <!-- Disable service worker on Pages -->
+    <script>
+      false && "serviceWorker" in navigator && window.addEventListener("load", () => {
+        navigator.serviceWorker.register("./sw.js", { scope: "./" });
+      });
+    </script>
+  </body>
+</html>
